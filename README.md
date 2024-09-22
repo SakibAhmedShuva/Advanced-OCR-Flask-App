@@ -11,7 +11,7 @@ This Flask application provides an advanced Optical Character Recognition (OCR) 
 
 ## Prerequisites
 
-- Python 3.7+
+- This API was prepared with Python 3.10.11
 - Flask
 - Doctr
 - Pillow
