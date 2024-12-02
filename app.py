@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, jsonify
 import os
 from doctr.models import ocr_predictor
 from doctr.io import DocumentFile
@@ -6,9 +6,10 @@ from PIL import Image
 import numpy as np
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
+
 # Increase maximum file size to 16MB
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Ensure upload folder exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -17,18 +18,23 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 # Load the Doctr OCR model once at startup
 model = ocr_predictor(pretrained=True)
 
-@app.route('/', methods=['GET', 'POST'])
+def post_process_text(text):
+    if text:
+        return text.strip()
+    return ""
+
+@app.route('/ocr', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         try:
             # Check if the POST request has the file part
             if 'file' not in request.files:
-                return {'error': 'No file part'}, 400
-            
+                return jsonify({'error': 'No file part'}), 400
+
             file = request.files['file']
             # If the user does not select a file, browser submits empty part
             if file.filename == '':
-                return {'error': 'No selected file'}, 400
+                return jsonify({'error': 'No selected file'}), 400
                 
             if file:
                 # Save the uploaded file
@@ -42,17 +48,20 @@ def upload_file():
                     # Remove the file after processing
                     os.remove(filepath)
                     
-                    # Return JSON response
-                    return {'text': text}, 200
+                    # Return JSON response with formatted text
+                    return jsonify({
+                        'text': text,
+                        'lines': text.split('\n')  # Add lines array for better formatting
+                    }), 200
                     
                 except Exception as e:
                     # Clean up file if processing fails
                     if os.path.exists(filepath):
                         os.remove(filepath)
-                    return {'error': str(e)}, 500
+                    return jsonify({'error': str(e)}), 500
                     
         except Exception as e:
-            return {'error': str(e)}, 500
+            return jsonify({'error': str(e)}), 500
             
     # GET request - return simple HTML form
     return render_template('upload.html')
@@ -68,16 +77,24 @@ def process_file(filepath):
         image = Image.open(filepath).convert('RGB')
         image = np.array(image)
         result = model([image])
-        
+
     # Extract text from the OCR result
-    text_output = ""
+    ocr_texts = []
+    
     for page in result.pages:
-        for block in page.blocks:
+        for block in page.blocks:  # Changed from block.lines to page.blocks
             for line in block.lines:
-                line_text = " ".join([word.value for word in line.words])
-                text_output += line_text + "\n"
-    return text_output
+                # Get all words in the line
+                line_words = [word.value for word in line.words]
+                # Join words with single space
+                line_text = " ".join(line_words)
+                # Clean up the text
+                processed_text = post_process_text(line_text)
+                if processed_text:  # Only add non-empty lines
+                    ocr_texts.append(processed_text)
+
+    # Join all lines with newline character
+    return "\n".join(ocr_texts)
 
 if __name__ == '__main__':
-    # Run with increased timeout
-    app.run(host='0.0.0.0', debug=False, threaded=True)
+    app.run(host='0.0.0.0', port="5002", debug=False, threaded=True)
