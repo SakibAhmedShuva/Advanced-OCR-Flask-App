@@ -39,8 +39,8 @@ This Flask application provides an Optical Character Recognition (OCR) service u
 ### Local Installation
 1. Clone this repository:
    ```bash
-   git clone https://github.com/SakibAhmedShuva/ocr-flask-app.git
-   cd ocr-flask-app
+   git clone https://github.com/SakibAhmedShuva/Advanced-OCR-Flask-App.git
+   cd Advanced-OCR-Flask-App
    ```
 
 2. Install the required dependencies:
