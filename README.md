@@ -1,4 +1,4 @@
-# OCR Flask App
+# Advanced-OCR-Flask-App
 This Flask application provides an Optical Character Recognition (OCR) service using the Doctr library. It allows users to upload images or PDF files and extract text content from them, with support for both local deployment and containerized environments using Docker.
 
 ## Features
